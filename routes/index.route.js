@@ -108,4 +108,96 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+
+// API to fetch statistics for a selected month
+router.get('/statistics/:month', async (req, res) => {
+  const month = req.params.month;
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const monthIndex = monthNames.indexOf(month);
+
+  if (monthIndex === -1) {
+    return res.status(400).send('Invalid month');
+  }
+
+  try {
+    // Total sale amount of selected month
+    const totalSaleAmount = await ProductCollection.aggregate([
+      {
+        $match: {
+          $expr: {
+            $and: [
+              { $eq: [{ $month: "$dateOfSale" }, monthIndex + 1] }, // MongoDB month is 1-indexed
+              // { $eq: [{ $year: "$dateOfSale" }, new Date().getFullYear()] } // Match current year
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: { $multiply: ["$quantity", "$price"] } }
+        }
+      }
+    ]);
+
+    // Total number of sold items of selected month
+    const totalSoldItems = await ProductCollection.aggregate([
+      {
+        $match: {
+          $expr: {
+            $and: [
+              { $eq: [{ $month: "$dateOfSale" }, monthIndex + 1] }, // MongoDB month is 1-indexed
+              // { $eq: [{ $year: "$dateOfSale" }, new Date().getFullYear()] } // Match current year
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalSold: { $sum: "$quantity" }
+        }
+      }
+    ]);
+
+    // Total number of not sold items of selected month
+    const totalNotSoldItems = await ProductCollection.aggregate([
+      {
+        $match: {
+          $or: [
+            { dateOfSale: { $exists: false } }, // Products without a dateOfSale
+            { dateOfSale: null },              // Products with null dateOfSale
+            {
+              $and: [
+                { $ne: [{ $month: "$dateOfSale" }, monthIndex + 1] }, // MongoDB month is 1-indexed
+                { $eq: [{ $year: "$dateOfSale" }, new Date().getFullYear()] } // Match current year
+              ]
+            }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalNotSold: { $sum: "$quantity" }
+        }
+      }
+    ]);
+
+    res.json({
+      month: month,
+      totalSaleAmount: totalSaleAmount.length > 0 ? totalSaleAmount[0].totalAmount : 0,
+      totalSoldItems: totalSoldItems.length > 0 ? totalSoldItems[0].totalSold : 0,
+      totalNotSoldItems: totalNotSoldItems.length > 0 ? totalNotSoldItems[0].totalNotSold : 0
+    });
+  } catch (err) {
+    console.error('Error fetching statistics:', err);
+    res.status(500).send('Error fetching statistics');
+  }
+});
+
 module.exports = router;

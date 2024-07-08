@@ -9,7 +9,7 @@ const productSchema = new mongoose.Schema({
         type: Number,
         require: true
     },
-    dateOfSale: String,
+    dateOfSale: Date,
 })
 
 const ProductCollection = mongoose.model('Task01_Products', productSchema);

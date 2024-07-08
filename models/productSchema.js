@@ -5,7 +5,10 @@ const productSchema = new mongoose.Schema({
     product_id: Number,
     transaction_id: Number,
     quantity: Number,
-    price: Number,
+    price: {
+        type: Number,
+        require: true
+    },
     dateOfSale: String,
 })
 

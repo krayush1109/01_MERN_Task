@@ -34,27 +34,6 @@ router.get('/initialize-db', async (req, res) => {
 
 })
 
-router.get('/fetchParticular', async (req, res) => {
-  try {    
-    const products = await ProductCollection.find({ dateOfSale: { $exists: true } });
-
-    products.map((item) => {
-      const date = new Date(item.dateOfSale);
-      const result = date.getMonth() + 1;
-
-      console.log(item.dateOfSale, " ", result);
-    })
-
-
-    // res.send(200).send("Data Fetched Successfully");
-    res.json(products);
-  } catch (err) {
-    console.log(err);
-    // res.status(500).send('Error fetching data');
-    res.send(err);
-  }
-})
-
 // Fetch data based on the month
 router.get('/products/:month', async (req, res) => {
   const month_inp = req.params.month;
@@ -87,6 +66,45 @@ router.get('/products/:month', async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).send('Error fetching data');
+  }
+});
+
+
+// API to list all transactions with search and pagination
+router.get('/transactions', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 10;
+    const search = req.query.search || '';
+
+    let query = {};
+
+    if (search) {
+      query = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          // Handle price as numeric search (if needed)          
+        ]
+      };
+    }
+
+    const totalCount = await ProductCollection.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / perPage);
+
+    const transactions = await ProductCollection.find(query)
+      .skip((page - 1) * perPage)
+      .limit(perPage);
+    res.json({
+      transactions,
+      page,
+      perPage,
+      totalPages,
+      totalCount
+    });
+  } catch (err) {
+    console.error('Error fetching transactions:', err);
+    res.status(500).send('Error fetching transactions');
   }
 });
 

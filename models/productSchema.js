@@ -6,6 +6,7 @@ const productSchema = new mongoose.Schema({
     transaction_id: Number,
     quantity: Number,
     price: Number,
+    dateOfSale: String,
 })
 
 const ProductCollection = mongoose.model('Task01_Products', productSchema);
